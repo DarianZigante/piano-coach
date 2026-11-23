@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piano Coach</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B9%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  /* A music desk: white score paper on a cool slate surface, ink text, one teal cue colour.
+     Layout: one screen. Toolbar, score, coach line, full 88-key keyboard, top to bottom. */
+  --ink: #16202a;
+  --ink-2: #51606e;
+  --paper: #ffffff;
+  --desk: #e8edf1;
+  --desk-2: #d8e1e8;
+  --line: #c3ced8;
+  --cue: #0b7285;
+  --cue-left: #6741d9;
+  --good: #2b8a3e;
+  --bad: #c92a2a;
+  --slow: #b7791f;
+  --display: "Baskerville", "Hoefler Text", "Iowan Old Style", Georgia, serif;
+  --body: "Avenir Next", Avenir, -apple-system, "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--desk); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--cue); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+[hidden] { display: none !important; }
+
+/* ---------- library ---------- */
+#library { height: 100%; overflow-y: auto; }
+.lib-inner { max-width: 1040px; margin: 0 auto; padding: 36px 24px 56px; display: flex; flex-direction: column; gap: 28px; }
+.lib-head { display: grid; grid-template-columns: 1fr minmax(260px, 360px); gap: 32px; align-items: end; }
+.lib-head h1 { font-size: 44px; letter-spacing: -0.01em; }
+.lib-head p { margin: 8px 0 0; color: var(--ink-2); max-width: 56ch; }
+.setup { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; font-size: 14.5px; }
+.setup h2 { font-family: var(--body); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; }
+.setup ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 3px; }
+.group h2 { font-size: 22px; margin-bottom: 10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; text-align: left; display: flex; flex-direction: column; gap: 4px; min-height: 124px; transition: border-color .12s, box-shadow .12s; }
+.card:hover { border-color: var(--cue); box-shadow: 0 2px 10px rgba(11, 114, 133, .14); }
+.card h3 { font-size: 21px; }
+.card .by { color: var(--ink-2); font-size: 14px; }
+.card .about { font-size: 14.5px; margin-top: 4px; flex: 1; }
+.card .meta { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-2); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.chip { border-radius: 999px; padding: 1px 9px; border: 1px solid var(--line); background: var(--desk); }
+.chip.best { border-color: var(--good); color: var(--good); background: #edf7ef; font-weight: 600; }
+.card.add { border-style: dashed; background: transparent; }
+.card.add .about { color: var(--ink-2); }
+.fine { font-size: 13.5px; color: var(--ink-2); max-width: 78ch; margin: 0; }
+.remove { margin-left: auto; border: 0; background: none; color: var(--ink-2); text-decoration: underline; font-size: 13px; padding: 0; }
+
+/* ---------- practice ---------- */
+#practice { height: 100%; display: grid; grid-template-rows: auto 1fr auto auto; min-height: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.bar .what { display: flex; flex-direction: column; min-width: 150px; margin-right: auto; }
+.bar .what h1 { font-size: 24px; line-height: 1.1; }
+.bar .what span { font-size: 13px; color: var(--ink-2); }
+.btn { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 7px 13px; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primary { background: var(--cue); border-color: var(--cue); color: #fff; font-weight: 600; padding: 9px 18px; font-size: 17px; }
+.btn.primary.on { background: var(--bad); border-color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.quiet { border-color: transparent; padding-left: 6px; padding-right: 8px; color: var(--ink-2); }
+.field { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.field input[type=number] { width: 52px; padding: 6px 6px; border: 1px solid var(--line); border-radius: 6px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
+.field input[type=range] { width: 92px; accent-color: var(--cue); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--paper); padding: 7px 12px; border-right: 1px solid var(--line); font-size: 15px; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed=true] { background: var(--ink); color: #fff; }
+#scoreWrap { overflow: auto; min-height: 0; padding: 18px 16px; position: relative; }
+#paper { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 6px rgba(22, 32, 42, .08); margin: 0 auto; max-width: 1280px; padding: 10px 14px 18px; position: relative; }
+#paper.oops { animation: oops .35s; }
+@keyframes oops { 0% { box-shadow: 0 0 0 4px rgba(201, 42, 42, .55); } 100% { box-shadow: 0 1px 6px rgba(22, 32, 42, .08); } }
+#score { min-height: 160px; }
+#loading { padding: 40px; color: var(--ink-2); text-align: center; }
+
+.coach { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 10px 18px; background: var(--paper); border-top: 1px solid var(--line); min-height: 64px; }
+#say { font-size: 20px; font-weight: 500; }
+#say .n { font-family: var(--display); font-weight: 600; font-size: 24px; padding: 0 2px; }
+#say .r { color: var(--cue); }
+#say .l { color: var(--cue-left); }
+#say.good { color: var(--good); }
+#say.bad { color: var(--bad); }
+#say small { display: block; font-size: 14px; font-weight: 400; color: var(--ink-2); }
+.ears { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 13px; color: var(--ink-2); min-width: 190px; }
+.meter { width: 180px; height: 8px; border-radius: 4px; background: var(--desk-2); overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0%; background: var(--cue); transition: width .08s linear; }
+#hearing { font-variant-numeric: tabular-nums; min-height: 1.3em; }
+
+#keys { background: var(--ink); padding: 6px 10px 10px; }
+#keys svg { display: block; width: 100%; height: auto; max-height: 128px; }
+.wk { fill: #fbfcfd; stroke: #7d8a96; stroke-width: 1; }
+.bk { fill: #1c242c; stroke: #0c1116; stroke-width: 1; }
+.klabel { font: 600 9px var(--body); fill: #8a97a3; text-anchor: middle; pointer-events: none; }
+.kname { font: 700 10px var(--body); fill: #fff; text-anchor: middle; pointer-events: none; }
+.wk.want-r, .bk.want-r { fill: var(--cue); }
+.wk.want-l, .bk.want-l { fill: var(--cue-left); }
+.wk.hit, .bk.hit { fill: var(--good); }
+.wk.wrong, .bk.wrong { fill: var(--bad); }
+.hear { stroke: #f2c94c; stroke-width: 3; }
+
+/* ---------- report ---------- */
+#report { position: fixed; inset: 0; background: rgba(22, 32, 42, .45); display: grid; place-items: center; padding: 20px; z-index: 20; }
+.sheet { background: var(--paper); border-radius: 12px; max-width: 620px; width: 100%; max-height: 92%; overflow: auto; padding: 26px 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 40px rgba(22, 32, 42, .3); }
+.sheet h2 { font-size: 30px; }
+.score-line { display: flex; align-items: baseline; gap: 12px; }
+.score-line b { font-family: var(--display); font-size: 54px; line-height: 1; font-variant-numeric: tabular-nums; }
+.score-line span { color: var(--ink-2); }
+.spots { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.spots li { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-left: 5px solid var(--slow); border-radius: 8px; padding: 9px 12px; }
+.spots li.err { border-left-color: var(--bad); }
+.spots li div { flex: 1; font-size: 15px; }
+.spots li div b { display: block; }
+.sheet .row { display: flex; flex-wrap: wrap; gap: 10px; }
+.note-small { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+
+@media (max-width: 760px) {
+  .lib-head { grid-template-columns: 1fr; }
+  .lib-head h1 { font-size: 34px; }
+  .coach { grid-template-columns: 1fr; }
+  .ears { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<section id="library">
+  <div class="lib-inner">
+    <div class="lib-head">
+      <div>
+        <h1>Piano Coach</h1>
+        <p>Choose a piece and play it on your piano. The computer listens through its microphone, follows you along the sheet music, waits when you pause, and shows you which notes to fix.</p>
+      </div>
+      <div class="setup">
+        <h2>Before you start</h2>
+        <ol>
+          <li>Set the laptop on or beside the piano.</li>
+          <li>Press <b>Start listening</b> and allow the microphone.</li>
+          <li>Keep the room fairly quiet while you play.</li>
+        </ol>
+      </div>
+    </div>
+    <div id="groups"></div>
+    <p class="fine">Good to know: when two notes are struck at the same moment exactly an octave apart, a microphone cannot always tell whether the upper one was played, so the coach assumes it was. Wrong notes are still caught. Works best in Chrome.</p>
+    <p class="fine" id="version">Version <!--BUILD--></p>
+  </div>
+</section>
+
+<section id="practice" hidden>
+  <div class="bar">
+    <button class="btn quiet" id="back" type="button">&larr; Pieces</button>
+    <div class="what"><h1 id="title"></h1><span id="by"></span></div>
+    <button class="btn primary" id="go" type="button">Start listening</button>
+    <button class="btn" id="restart" type="button" title="Go back to the first bar of the section">From the top</button>
+    <button class="btn" id="skip" type="button" title="Move past this note if the microphone did not catch it (or press the right arrow key)">Skip note</button>
+    <div class="seg" role="group" aria-label="Which hands to check">
+      <button type="button" data-hands="both" aria-pressed="true">Both hands</button>
+      <button type="button" data-hands="right" aria-pressed="false">Right</button>
+      <button type="button" data-hands="left" aria-pressed="false">Left</button>
+    </div>
+    <label class="field">Bars <input type="number" id="from" min="0" value="1" aria-label="First bar"> to <input type="number" id="to" min="0" value="1" aria-label="Last bar"></label>
+    <button class="btn" id="hear" type="button" title="Play the piece so you can hear how it goes">&#9654; Hear it</button>
+    <label class="field">Speed <input type="range" id="speed" min="40" max="120" value="80" step="5"> <span id="speedOut">80%</span></label>
+    <label class="field"><input type="checkbox" id="names" checked> Note names</label>
+    <div class="seg" role="group" aria-label="Size of the music">
+      <button type="button" id="zoomOut" aria-label="Smaller music">A&minus;</button>
+      <button type="button" id="zoomIn" aria-label="Larger music">A+</button>
+    </div>
+  </div>
+  <div id="scoreWrap"><div id="paper"><div id="loading">Setting out the music…</div><div id="score"></div></div></div>
+  <div class="coach">
+    <div id="say" aria-live="polite"></div>
+    <div class="ears"><div class="meter" title="Microphone level"><i id="level"></i></div><div id="hearing"></div></div>
+  </div>
+  <div id="keys" aria-hidden="true"></div>
+</section>
+
+<div id="report" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="repTitle">
+    <h2 id="repTitle"></h2>
+    <div class="score-line"><b id="repPct"></b><span id="repSub"></span></div>
+    <p id="repText" style="margin:0"></p>
+    <ul class="spots" id="repSpots"></ul>
+    <p class="note-small" id="repNote"></p>
+    <div class="row">
+      <button class="btn primary" id="again" type="button">Play it again</button>
+      <button class="btn" id="whole" type="button">Whole piece</button>
+      <button class="btn" id="other" type="button">Choose another piece</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file" accept=".musicxml,.xml,.mxl" hidden>
+
+<!--SCRIPTS-->
+</body>
+</html>

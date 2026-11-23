@@ -1,0 +1,42 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>probe</title></head><body style="margin:0;background:#fff">
+<div id="score" style="width:1100px"></div>
+<script src="../node_modules/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
+<script src="../src/pieces.js"></script>
+<script>
+(async () => {
+  const out = {};
+  try {
+    const piece = PianoPieces.library.find(p => p.id === (location.hash.slice(1) || 'minuet'));
+    const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(document.getElementById('score'), { autoResize: false, backend: 'svg', drawTitle: false, drawComposer: false, drawPartNames: false, autoBeam: true, drawMeasureNumbers: true });
+    await osmd.load(PianoPieces.toMusicXml(piece));
+    osmd.zoom = 0.9; osmd.render();
+    out.version = osmd.Version;
+    const cur = osmd.cursor; cur.show(); cur.reset();
+    const it = cur.Iterator || cur.iterator;
+    out.itKeys = Object.getOwnPropertyNames(Object.getPrototypeOf(it)).slice(0, 60);
+    out.curKeys = Object.getOwnPropertyNames(Object.getPrototypeOf(cur));
+    const steps = []; let guard = 0;
+    while (!it.EndReached && guard++ < 2000) {
+      const ves = it.CurrentVoiceEntries || []; const notes = [];
+      const gns = cur.GNotesUnderCursor ? cur.GNotesUnderCursor() : [];
+      for (const ve of ves) for (const n of ve.Notes) {
+        if (n.isRest()) continue;
+        let staff = -1; try { staff = ve.ParentSourceStaffEntry.ParentStaff.idInMusicSheet; } catch (e) { staff = 'err'; }
+        const tie = n.NoteTie; const tied = !!(tie && tie.StartNote !== n);
+        const gn = gns.find(g => g.sourceNote === n); let el = null; try { el = gn && gn.getSVGGElement && gn.getSVGGElement(); } catch (e) {}
+        notes.push({ midi: n.halfTone + 12, staff, tied, len: n.Length.RealValue, hasEl: !!el, cls: el ? el.getAttribute('class') : null });
+      }
+      let ts = null; try { ts = it.currentTimeStamp.RealValue; } catch (e) {}
+      steps.push({ m: it.CurrentMeasureIndex, ts, notes });
+      cur.next();
+    }
+    out.nSteps = steps.length; out.first = steps.slice(0, 8); out.last = steps.slice(-2);
+    cur.reset();
+    const ce = cur.cursorElement; out.cursorEl = ce ? ce.tagName + ' ' + ce.style.left + ' ' + ce.style.top + ' ' + ce.width + 'x' + ce.height : null;
+    out.tempo = osmd.Sheet.DefaultStartTempoInBpm; out.measures = osmd.Sheet.SourceMeasures.length;
+    // colour test
+    const g = document.querySelector('g.vf-stavenote'); out.vfnote = g ? g.outerHTML.slice(0, 300) : null;
+  } catch (e) { out.error = String(e && e.stack || e); }
+  window.__out = out; document.title = 'done';
+})();
+</script></body></html>

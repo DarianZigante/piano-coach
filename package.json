@@ -1,0 +1,16 @@
+{
+  "name": "piano-coach",
+  "version": "1.0.0",
+  "description": "A piano practice page that listens through the microphone and follows along on the sheet music.",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/run.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "opensheetmusicdisplay": "^1.9.0"
+  },
+  "private": true
+}
