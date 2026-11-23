@@ -18,10 +18,15 @@ Everything runs in the browser. Nothing is recorded or sent anywhere.
 | `src/engine.js` | Works out which piano notes are sounding from the microphone signal |
 | `src/follower.js` | Compares what was heard with the score and decides right / wrong / wait |
 | `src/pieces.js` | The built-in pieces and the note shorthand they are written in |
-| `build.js` | Combines the files above into `index.html` |
+| `src/artifact/` | Extras for the Claude artifact version: a Download button and notes for whoever edits it |
+| `build.js` | Combines the files above into `index.html`, and into `dist/artifact/index.html` for publishing as a Claude artifact |
 | `test/`, `tools/`, `probe/` | Development checks (simulated performances, browser runs) |
 
 Sheet music is drawn with [OpenSheetMusicDisplay](https://opensheetmusicdisplay.org) 1.9.0 (BSD-3-Clause), which is bundled into `index.html`.
+
+## The artifact version
+
+The same page is also published as a Claude artifact so that a copy can be duplicated and changed by chatting with Claude. The microphone is blocked inside an artifact, so that version adds a **Download Piano Coach** button; the downloaded file is opened in Chrome. To keep the file small enough to edit in a chat (about 110 KB instead of 1.3 MB), it loads the sheet-music library from a CDN instead of bundling it.
 
 ## Making a change
 

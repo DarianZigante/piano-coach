@@ -1,0 +1,35 @@
+PIANO COACH: notes for whoever edits this page (a person or an AI)
+
+What it is
+  A piano practice page. It shows sheet music, listens through the computer's microphone,
+  follows the player note by note, waits when she pauses, and marks wrong notes.
+  Everything runs in the browser. Nothing is recorded or sent anywhere.
+
+How it is used
+  The microphone does NOT work inside a Claude artifact. The player presses "Download Piano Coach"
+  at the top of this page and opens the downloaded file in Chrome. After every change made here
+  she has to download again, so tell her to do that when a change is finished.
+
+How this file is laid out
+  <style data-part="style">      all the styles
+  the markup                      the screens: #dl (download strip), #library, #practice, #report, #ask
+  <script data-part="snapshot">  keeps a clean copy of the markup for the download. Must stay the first script.
+  <script data-part="osmd">      the sheet-music library (OpenSheetMusicDisplay 1.9.0), loaded from a CDN
+  <script data-part="engine">    works out which piano notes are sounding
+  <script data-part="follower">  compares what was heard with the score
+  <script data-part="pieces">    the built-in pieces, written in a short notation explained at the top of that script
+  <script data-part="app">       screens, buttons, the end-of-run report, the "Report or request" note
+  <script data-part="download">  the Download button
+
+Rules for changes
+  1. Keep the data-part attribute on the style and on every script, and give any new script one too.
+     The downloaded file is assembled from exactly these parts; anything without data-part is left out.
+  2. Low risk: adding or correcting pieces, wording, colours, sizes, layout, buttons, the report.
+  3. High risk: the "engine" and "follower" scripts. They were tuned against a set of recorded
+     performances that is not available here, so a small change can quietly break the listening.
+     Change them only if nothing else will do, keep the change small, and say plainly that it is untested.
+  4. Keep it a single file with no other outside files or network calls.
+  5. To add a piece, add an entry to the library in the "pieces" script. Each bar of each hand must add up
+     to the time signature or the piece will be refused with a message naming the bar.
+
+Source, history and tests: https://github.com/DarianZigante/piano-coach

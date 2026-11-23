@@ -235,6 +235,7 @@
   /* ---------- listening ---------- */
   function micProblem(e) {
     var n = e && e.name;
+    if (window.PianoCoachPreview) return 'The microphone cannot work in this preview. <small>Press Download Piano Coach at the top, then open the downloaded file in Chrome.</small>';
     if (n === 'NotAllowedError' || n === 'SecurityError') return 'The microphone is blocked. <small>Click the microphone icon at the right of the address bar, choose Allow, then press Start listening again.</small>';
     if (n === 'NotFoundError') return 'No microphone was found on this computer.';
     return 'The microphone could not be started. <small>' + esc(String(e && e.message || e)).slice(0, 140) + '</small>';

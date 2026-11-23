@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!--NOTE-->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Piano Coach</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B9%3C/text%3E%3C/svg%3E">
-<style>
+<style data-part="style">
 :root {
   /* A music desk: white score paper on a cool slate surface, ink text, one teal cue colour.
      Layout: one screen. Toolbar, score, coach line, full 88-key keyboard, top to bottom. */
@@ -138,6 +139,15 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
 #askHelp.good { color: var(--good); }
 #askHelp.bad { color: var(--bad); }
 
+/* ---------- download strip: only shown where the page is open as a Claude artifact ---------- */
+#dl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; background: #fff6dc; border-bottom: 1px solid #e3cb86; font-size: 15px; }
+#dl p { margin: 0; flex: 1; min-width: 260px; }
+#dl .btn.primary { font-size: 15px; padding: 8px 14px; }
+#dlMsg { flex-basis: 100%; font-size: 14px; }
+#dlMsg:empty { display: none; }
+.preview body { display: flex; flex-direction: column; }
+.preview #library, .preview #practice { flex: 1; min-height: 0; height: auto; }
+
 @media (max-width: 760px) {
   .lib-head { grid-template-columns: 1fr; }
   .lib-head h1 { font-size: 34px; }
@@ -148,6 +158,12 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
 </style>
 </head>
 <body>
+
+<div id="dl" hidden>
+  <p><b>This is the preview.</b> The microphone cannot work on this page. Download Piano Coach, then open the downloaded file in Chrome to practise.</p>
+  <button class="btn primary" id="dlBtn" type="button">Download Piano Coach</button>
+  <span id="dlMsg" aria-live="polite"></span>
+</div>
 
 <section id="library">
   <div class="lib-inner">
