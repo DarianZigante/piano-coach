@@ -10,7 +10,8 @@
   function save() { try { localStorage.setItem(STORE, JSON.stringify(store)); } catch (e) { /* storage unavailable: carry on */ } }
 
   var S = { piece: null, steps: [], osmd: null, zoom: 1, hands: 'both', cursorPos: 0, cur: 0, listening: false, ear: null, fol: null, audio: null,
-    demo: null, mistakes: [], range: [0, 0], runFrom: 0, startedAt: 0, barOffset: 1, nBars: 1, frame: 0 };
+    demo: null, mistakes: [], range: [0, 0], runFrom: 0, startedAt: 0, barOffset: 1, nBars: 1, frame: 0,
+    log: [], skips: 0, heard: null, stepAt: 0 };
 
   /* ---------- names ---------- */
   var SH = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'], FL = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
@@ -249,17 +250,18 @@
       var ear = new Ear({ sampleRate: ctx.sampleRate });
       ear.onFrame = onFrame;
       var fol = new Follower(ear);
-      fol.cb.step = function (i) { setCursor(i); prompt(i); showWanted(i); };
+      fol.cb.step = function (i) { S.stepAt = Date.now(); setCursor(i); prompt(i); showWanted(i); };
       fol.cb.hit = function (i, m) { var st = S.steps[i]; st.notes.forEach(function (n) { if (n.midi === m && inHands(n)) paint(n, GOOD); }); flashKey(m, 'hit'); };
       fol.cb.wrong = function (i, midis, expected) {
         S.mistakes.push({ step: i, bar: S.steps[i].m + S.barOffset, played: midis.slice(), expected: expected.slice() });
+        note('wrong bar ' + (S.steps[i].m + S.barOffset) + ': ' + midis.map(nmA).join(' ') + ' for ' + expected.map(nmA).join(' '));
         midis.forEach(function (m) { flashKey(m, 'wrong', 900); });
         paintStep(i, INK);
         var pp = $('paper'); pp.classList.remove('oops'); void pp.offsetWidth; pp.classList.add('oops');
         say(wrongText(midis, expected), 'bad');
         clearTimeout(sayTimer); sayTimer = setTimeout(function () { if (S.listening && S.cur === i) prompt(i); }, 2600);
       };
-      fol.cb.done = function (i, st) { clearTimeout(sayTimer); paintStep(i, st.firstTry ? GOOD : SLOW); };
+      fol.cb.done = function (i, st) { clearTimeout(sayTimer); paintStep(i, st.firstTry ? GOOD : SLOW); note((st.firstTry ? 'ok' : 'done') + ' ' + (i + 1)); };
       fol.cb.finish = function () { finish(); };
       var failed = false;
       proc.onaudioprocess = function (ev) {
@@ -281,6 +283,7 @@
     list.sort(function (a, b) { return a - b; });
     var olds = document.querySelectorAll('#keys .hear'); for (var i = 0; i < olds.length; i++) olds[i].classList.remove('hear');
     list.slice(0, 8).forEach(function (m) { var k = $('k' + m); if (k) k.classList.add('hear'); });
+    if (list.length && S.listening) S.heard = { at: Date.now(), notes: list.slice(0, 6) };
     $('hearing').textContent = S.listening ? (list.length ? 'Hearing ' + list.slice(0, 6).map(nm).join(' ') : 'Listening…') : '';
   }
   function start(fromTop) {
@@ -290,9 +293,10 @@
       var from = (!fromTop && S.cur > S.range[0] && S.cur < S.range[1]) ? S.cur : S.range[0];
       S.fol.load(S.steps); S.fol.setHands(S.hands);
       for (var i = from; i <= S.range[1]; i++) S.steps[i].notes.forEach(function (n) { paint(n, inHands(n) ? INK : DIM); });
-      S.mistakes = []; S.runFrom = from; S.startedAt = Date.now();
+      S.mistakes = []; S.runFrom = from; S.startedAt = Date.now(); S.log = []; S.skips = 0; S.heard = null;
       if (!S.fol.start(from, S.range[1])) { say('There is nothing for that hand to play in these bars.'); return; }
       S.listening = true; goButton();
+      note('start at ' + (from + 1));
     }).catch(function (e) { say(micProblem(e), 'bad'); });
   }
   function stopListening() {
@@ -327,6 +331,7 @@
       bars[m.bar].notes.push('played ' + m.played.map(nm).join(' and ') + ' for ' + nm(near));
     });
     var pct = total ? Math.round((100 * clean) / total) : 0;
+    note('finish ' + pct + '%');
     var secs = Math.round((Date.now() - S.startedAt) / 1000), whole = S.runFrom === 0 && S.range[1] === S.steps.length - 1 && S.hands === 'both';
     $('repTitle').textContent = pct === 100 ? 'A clean run' : pct >= 85 ? 'Nearly there' : pct >= 60 ? 'Coming along' : 'Worth another pass';
     $('repPct').textContent = pct + '%';
@@ -398,7 +403,7 @@
   });
   $('go').addEventListener('click', function () { if (S.listening) { stopListening(); say('Stopped. <small>Start listening picks up where the cursor is. From the top goes back to the first bar.</small>'); } else start(false); });
   $('restart').addEventListener('click', function () { var was = S.listening; stopAll(); applyBars(); setCursor(S.range[0]); showWanted(S.cur); paintAll(); if (was) start(true); else prompt(S.cur); });
-  function skip() { if (S.listening && S.fol) S.fol.skip(); }
+  function skip() { if (!S.listening || !S.fol) return; S.skips++; note('skip ' + (S.cur + 1)); S.fol.skip(); }
   $('skip').addEventListener('click', skip);
   document.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight' && S.listening && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); skip(); } });
   $('hear').addEventListener('click', function () { if (S.demo) { stopDemo(); prompt(S.cur); } else startDemo(); });
@@ -416,6 +421,112 @@
   $('again').addEventListener('click', function () { closeReport(); setCursor(S.range[0]); start(true); });
   $('whole').addEventListener('click', function () { closeReport(); $('from').value = S.barOffset; $('to').value = S.nBars - 1 + S.barOffset; applyBars(); setCursor(S.range[0]); start(true); });
   $('other').addEventListener('click', function () { $('back').click(); });
+
+  /* ---------- report or request ----------
+     Opens a ready-written email. The page itself sends nothing: no server, no recording. */
+  var TO = ['darian.zigante', 'gmail.com'].join('@');
+  var ASH = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], AFL = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  // Plain-text note names, so they survive any email program.
+  function nmA(m) { var t = S.piece && S.piece.key < 0 ? AFL : ASH; return t[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+  // A short running record of the current run: "12.4 ok 23" = step 23 completed 12.4 s in.
+  function note(what) { S.log.push(((Date.now() - S.startedAt) / 1000).toFixed(1) + ' ' + what); if (S.log.length > 40) S.log.shift(); }
+  var ask = { kind: 'problem', info: [], where: '', opener: null, used: false };
+  function details() {
+    var L = ['Version: ' + $('version').textContent.replace(/^Version\s*/, '')];
+    ask.where = '';
+    if (!S.piece || $('practice').hidden) L.push('Screen: list of pieces');
+    else {
+      var p = S.piece, st = S.steps[S.cur], hands = S.hands === 'both' ? 'both hands' : S.hands + ' hand only';
+      L.push('Piece: ' + p.title + (p.imported ? ' (imported file)' : ''));
+      L.push('Settings: bars ' + $('from').value + ' to ' + $('to').value + ', ' + hands + ', speed ' + $('speed').value + '%, zoom ' + S.zoom.toFixed(1));
+      if (st) {
+        var want = []; st.notes.forEach(function (n) { if (!n.tied && inHands(n)) want.push(n.midi); });
+        want.sort(function (a, b) { return a - b; });
+        ask.where = ', bar ' + (st.m + S.barOffset);
+        L.push('At: bar ' + (st.m + S.barOffset) + ', step ' + (S.cur + 1) + ' of ' + S.steps.length + ', music has ' + (want.map(nmA).join(' ') || 'nothing for this hand'));
+      }
+      if (S.listening && S.fol) {
+        var got = []; S.fol.expected.forEach(function (m) { if (S.fol.hit.has(m)) got.push(m); });
+        L.push('Listening: yes, ' + ((Date.now() - S.stepAt) / 1000).toFixed(1) + ' s on this step, accepted so far: ' + (got.map(nmA).join(' ') || 'none') + ', tries ' + (S.fol.tries || 0));
+      } else L.push('Listening: no' + (!$('report').hidden ? ' (run finished: ' + $('repPct').textContent + ', ' + $('repSub').textContent + ')' : ''));
+      if (S.startedAt) L.push('This run: ' + S.mistakes.length + ' wrong, ' + S.skips + ' skipped');
+      if (S.heard) L.push('Last heard: ' + S.heard.notes.map(nmA).join(' ') + ' (' + ((Date.now() - S.heard.at) / 1000).toFixed(1) + ' s before)');
+      if (S.log.length) L.push('Recent: ' + S.log.slice(-12).join(' | '));
+    }
+    if (S.audio) {
+      var tr = S.audio.stream.getAudioTracks()[0];
+      L.push('Microphone: ' + (tr && tr.label ? tr.label + ', ' : '') + S.audio.ctx.sampleRate + ' Hz' + (S.ear && isFinite(S.ear.refMax) ? ', peak ' + Math.round(S.ear.refMax) + ' dB' : ''));
+    }
+    L.push('Window: ' + window.innerWidth + ' x ' + window.innerHeight);
+    L.push('Browser: ' + navigator.userAgent);
+    return L;
+  }
+  function askNote() {
+    var text = $('askText').value.trim(), problem = ask.kind === 'problem';
+    var subject = '[Piano Coach] ' + (problem ? 'Problem' : 'Request') + (S.piece && !$('practice').hidden ? ': ' + S.piece.title + ask.where : '');
+    var lines = [text, '', '---', 'Sent from Piano Coach (' + (problem ? 'problem' : 'request') + ')'].concat(ask.info);
+    function url(ls) { return 'mailto:' + TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(ls.join('\r\n')); }
+    var u = url(lines);
+    // Some email programs refuse very long links: drop the running record first.
+    if (u.length > 6000) u = url(lines.filter(function (l) { return l.indexOf('Recent: ') !== 0; }));
+    return { subject: subject, body: lines.join('\n'), url: u, empty: !text };
+  }
+  function askKind(k) {
+    ask.kind = k;
+    var bs = document.querySelectorAll('[data-kind]');
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-kind') === k ? 'true' : 'false');
+    $('askPrompt').textContent = k === 'problem' ? 'What happened?' : 'What would you like added or changed?';
+    $('askText').placeholder = k === 'problem' ? 'For example: in bar 5 it kept waiting even though I played the right notes.' : 'For example: please add Clair de Lune, or make the note names bigger.';
+  }
+  function askHelp(text, cls) { var el = $('askHelp'); el.textContent = text; el.className = 'note-small' + (cls ? ' ' + cls : ''); }
+  function openAsk(opener) {
+    ask.info = details();                    // taken first, so it shows what was happening
+    if (S.listening) { stopListening(); say('Stopped. <small>Start listening picks up where the cursor is. From the top goes back to the first bar.</small>'); }
+    stopDemo(); clearTimeout(sayTimer);
+    if (ask.used) { $('askText').value = ''; ask.used = false; ask.kind = 'problem'; }   // a fresh note
+    ask.opener = opener || null;
+    $('askInfo').textContent = ask.info.join('\n');
+    $('askCancel').textContent = 'Cancel';
+    askKind(ask.kind);
+    askHelp('Open email starts a new email with your note already written. Press Send there. Notes go to ' + TO + '.');
+    $('ask').hidden = false; $('askText').focus();
+  }
+  function closeAsk() { $('ask').hidden = true; if (ask.opener) { try { ask.opener.focus(); } catch (e) { /* gone */ } } }
+  function askReady() {
+    var n = askNote();
+    if (n.empty) { askHelp('Please write a few words first.', 'bad'); $('askText').focus(); return null; }
+    return n;
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (ok, fail) {
+      var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      var done = false; try { done = document.execCommand('copy'); } catch (e) { done = false; }
+      document.body.removeChild(t); if (done) ok(); else fail(new Error('copy refused'));
+    });
+  }
+  ['askLib', 'askBtn', 'askRep'].forEach(function (id) { $(id).addEventListener('click', function () { openAsk(this); }); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-kind]'), function (b) { b.addEventListener('click', function () { askKind(b.getAttribute('data-kind')); $('askText').focus(); }); });
+  $('askForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var n = askReady(); if (!n) return;
+    ask.used = true; $('askCancel').textContent = 'Close';
+    window.location.href = n.url;
+    askHelp('Your email should now be open with the note written. Press Send there. If nothing opened, press "Copy the note instead" and paste it into a new email to ' + TO + '.', 'good');
+  });
+  $('askCopy').addEventListener('click', function () {
+    var n = askReady(); if (!n) return;
+    copyText('To: ' + TO + '\nSubject: ' + n.subject + '\n\n' + n.body).then(function () {
+      ask.used = true; $('askCancel').textContent = 'Close';
+      askHelp('Copied. Start a new email to ' + TO + ', paste, and send.', 'good');
+    }, function () { askHelp('Copying did not work here. Please write to ' + TO + ' instead.', 'bad'); });
+  });
+  $('askCancel').addEventListener('click', closeAsk);
+  $('askText').addEventListener('input', function () { if (/\bbad\b/.test($('askHelp').className)) askHelp('Open email starts a new email with your note already written. Press Send there. Notes go to ' + TO + '.'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('ask').hidden) closeAsk(); });
+  S.ask = { note: askNote, details: details, open: openAsk };   // for inspection
+
   var rs = null;
   window.addEventListener('resize', function () {
     clearTimeout(rs); rs = setTimeout(function () { if (!S.osmd || $('practice').hidden || S.listening || S.demo) return; var at = S.cur; render(); applyBars(); setCursor(at); showWanted(at); }, 250);

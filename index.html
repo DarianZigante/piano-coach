@@ -27,7 +27,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--desk); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--cue); outline-offset: 2px; }
 h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
@@ -109,7 +109,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
 .hear { stroke: #f2c94c; stroke-width: 3; }
 
 /* ---------- report ---------- */
-#report { position: fixed; inset: 0; background: rgba(22, 32, 42, .45); display: grid; place-items: center; padding: 20px; z-index: 20; }
+#report, #ask { position: fixed; inset: 0; background: rgba(22, 32, 42, .45); display: grid; place-items: center; padding: 20px; z-index: 20; }
 .sheet { background: var(--paper); border-radius: 12px; max-width: 620px; width: 100%; max-height: 92%; overflow: auto; padding: 26px 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 40px rgba(22, 32, 42, .3); }
 .sheet h2 { font-size: 30px; }
 .score-line { display: flex; align-items: baseline; gap: 12px; }
@@ -122,6 +122,21 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
 .spots li div b { display: block; }
 .sheet .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .note-small { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+
+/* ---------- report or request ---------- */
+.ask-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; border-top: 1px solid var(--line); padding-top: 20px; }
+.ask-strip p { margin: 0; flex: 1; min-width: 240px; font-size: 15px; }
+.ask-strip p b { display: block; font-family: var(--display); font-size: 19px; font-weight: 600; }
+#ask { z-index: 30; }
+#ask .sheet { gap: 14px; }
+#ask label { font-weight: 600; margin-bottom: -6px; }
+#ask textarea { width: 100%; min-height: 124px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; line-height: 1.4; background: var(--paper); }
+#ask details { font-size: 13.5px; color: var(--ink-2); }
+#ask summary { cursor: pointer; }
+#ask pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; background: var(--desk); border-radius: 6px; padding: 8px 10px; margin: 8px 0 4px; max-height: 170px; overflow: auto; color: var(--ink); }
+#askHelp { font-size: 14.5px; }
+#askHelp.good { color: var(--good); }
+#askHelp.bad { color: var(--bad); }
 
 @media (max-width: 760px) {
   .lib-head { grid-template-columns: 1fr; }
@@ -151,8 +166,12 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       </div>
     </div>
     <div id="groups"></div>
+    <div class="ask-strip">
+      <p><b>Something not working, or something you would like added?</b>Send a short note about it, such as a piece to add or a bar where the coach got it wrong.</p>
+      <button class="btn" id="askLib" type="button">Report or request</button>
+    </div>
     <p class="fine">Good to know: when two notes are struck at the same moment exactly an octave apart, a microphone cannot always tell whether the upper one was played, so the coach assumes it was. Wrong notes are still caught. Works best in Chrome.</p>
-    <p class="fine" id="version">Version November 22, 2026 at 7:16 p.m.</p>
+    <p class="fine" id="version">Version November 22, 2026 at 7:43 p.m.</p>
   </div>
 </section>
 
@@ -176,6 +195,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       <button type="button" id="zoomOut" aria-label="Smaller music">A&minus;</button>
       <button type="button" id="zoomIn" aria-label="Larger music">A+</button>
     </div>
+    <button class="btn quiet" id="askBtn" type="button" title="Report a problem or ask for a change">Report or request</button>
   </div>
   <div id="scoreWrap"><div id="paper"><div id="loading">Setting out the music…</div><div id="score"></div></div></div>
   <div class="coach">
@@ -196,8 +216,32 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       <button class="btn primary" id="again" type="button">Play it again</button>
       <button class="btn" id="whole" type="button">Whole piece</button>
       <button class="btn" id="other" type="button">Choose another piece</button>
+      <button class="btn quiet" id="askRep" type="button" title="Report a problem or ask for a change">Report or request</button>
     </div>
   </div>
+</div>
+
+<div id="ask" hidden>
+  <form class="sheet" id="askForm" role="dialog" aria-modal="true" aria-labelledby="askTitle" novalidate>
+    <h2 id="askTitle">Report or request</h2>
+    <div class="seg" role="group" aria-label="What kind of note this is" style="align-self:flex-start">
+      <button type="button" data-kind="problem" aria-pressed="true">Something went wrong</button>
+      <button type="button" data-kind="request" aria-pressed="false">I would like something</button>
+    </div>
+    <label for="askText" id="askPrompt">What happened?</label>
+    <textarea id="askText" rows="5" maxlength="2000"></textarea>
+    <details>
+      <summary>What is sent along with your note</summary>
+      <pre id="askInfo"></pre>
+      These details help find the cause. No sound is recorded or sent.
+    </details>
+    <div class="row">
+      <button class="btn primary" id="askSend" type="submit">Open email</button>
+      <button class="btn" id="askCopy" type="button">Copy the note instead</button>
+      <button class="btn quiet" id="askCancel" type="button">Cancel</button>
+    </div>
+    <p class="note-small" id="askHelp" aria-live="polite"></p>
+  </form>
 </div>
 
 <input type="file" id="file" accept=".musicxml,.xml,.mxl" hidden>
@@ -1191,7 +1235,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
   function save() { try { localStorage.setItem(STORE, JSON.stringify(store)); } catch (e) { /* storage unavailable: carry on */ } }
 
   var S = { piece: null, steps: [], osmd: null, zoom: 1, hands: 'both', cursorPos: 0, cur: 0, listening: false, ear: null, fol: null, audio: null,
-    demo: null, mistakes: [], range: [0, 0], runFrom: 0, startedAt: 0, barOffset: 1, nBars: 1, frame: 0 };
+    demo: null, mistakes: [], range: [0, 0], runFrom: 0, startedAt: 0, barOffset: 1, nBars: 1, frame: 0,
+    log: [], skips: 0, heard: null, stepAt: 0 };
 
   /* ---------- names ---------- */
   var SH = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'], FL = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
@@ -1430,17 +1475,18 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       var ear = new Ear({ sampleRate: ctx.sampleRate });
       ear.onFrame = onFrame;
       var fol = new Follower(ear);
-      fol.cb.step = function (i) { setCursor(i); prompt(i); showWanted(i); };
+      fol.cb.step = function (i) { S.stepAt = Date.now(); setCursor(i); prompt(i); showWanted(i); };
       fol.cb.hit = function (i, m) { var st = S.steps[i]; st.notes.forEach(function (n) { if (n.midi === m && inHands(n)) paint(n, GOOD); }); flashKey(m, 'hit'); };
       fol.cb.wrong = function (i, midis, expected) {
         S.mistakes.push({ step: i, bar: S.steps[i].m + S.barOffset, played: midis.slice(), expected: expected.slice() });
+        note('wrong bar ' + (S.steps[i].m + S.barOffset) + ': ' + midis.map(nmA).join(' ') + ' for ' + expected.map(nmA).join(' '));
         midis.forEach(function (m) { flashKey(m, 'wrong', 900); });
         paintStep(i, INK);
         var pp = $('paper'); pp.classList.remove('oops'); void pp.offsetWidth; pp.classList.add('oops');
         say(wrongText(midis, expected), 'bad');
         clearTimeout(sayTimer); sayTimer = setTimeout(function () { if (S.listening && S.cur === i) prompt(i); }, 2600);
       };
-      fol.cb.done = function (i, st) { clearTimeout(sayTimer); paintStep(i, st.firstTry ? GOOD : SLOW); };
+      fol.cb.done = function (i, st) { clearTimeout(sayTimer); paintStep(i, st.firstTry ? GOOD : SLOW); note((st.firstTry ? 'ok' : 'done') + ' ' + (i + 1)); };
       fol.cb.finish = function () { finish(); };
       var failed = false;
       proc.onaudioprocess = function (ev) {
@@ -1462,6 +1508,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
     list.sort(function (a, b) { return a - b; });
     var olds = document.querySelectorAll('#keys .hear'); for (var i = 0; i < olds.length; i++) olds[i].classList.remove('hear');
     list.slice(0, 8).forEach(function (m) { var k = $('k' + m); if (k) k.classList.add('hear'); });
+    if (list.length && S.listening) S.heard = { at: Date.now(), notes: list.slice(0, 6) };
     $('hearing').textContent = S.listening ? (list.length ? 'Hearing ' + list.slice(0, 6).map(nm).join(' ') : 'Listening…') : '';
   }
   function start(fromTop) {
@@ -1471,9 +1518,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       var from = (!fromTop && S.cur > S.range[0] && S.cur < S.range[1]) ? S.cur : S.range[0];
       S.fol.load(S.steps); S.fol.setHands(S.hands);
       for (var i = from; i <= S.range[1]; i++) S.steps[i].notes.forEach(function (n) { paint(n, inHands(n) ? INK : DIM); });
-      S.mistakes = []; S.runFrom = from; S.startedAt = Date.now();
+      S.mistakes = []; S.runFrom = from; S.startedAt = Date.now(); S.log = []; S.skips = 0; S.heard = null;
       if (!S.fol.start(from, S.range[1])) { say('There is nothing for that hand to play in these bars.'); return; }
       S.listening = true; goButton();
+      note('start at ' + (from + 1));
     }).catch(function (e) { say(micProblem(e), 'bad'); });
   }
   function stopListening() {
@@ -1508,6 +1556,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       bars[m.bar].notes.push('played ' + m.played.map(nm).join(' and ') + ' for ' + nm(near));
     });
     var pct = total ? Math.round((100 * clean) / total) : 0;
+    note('finish ' + pct + '%');
     var secs = Math.round((Date.now() - S.startedAt) / 1000), whole = S.runFrom === 0 && S.range[1] === S.steps.length - 1 && S.hands === 'both';
     $('repTitle').textContent = pct === 100 ? 'A clean run' : pct >= 85 ? 'Nearly there' : pct >= 60 ? 'Coming along' : 'Worth another pass';
     $('repPct').textContent = pct + '%';
@@ -1579,7 +1628,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
   });
   $('go').addEventListener('click', function () { if (S.listening) { stopListening(); say('Stopped. <small>Start listening picks up where the cursor is. From the top goes back to the first bar.</small>'); } else start(false); });
   $('restart').addEventListener('click', function () { var was = S.listening; stopAll(); applyBars(); setCursor(S.range[0]); showWanted(S.cur); paintAll(); if (was) start(true); else prompt(S.cur); });
-  function skip() { if (S.listening && S.fol) S.fol.skip(); }
+  function skip() { if (!S.listening || !S.fol) return; S.skips++; note('skip ' + (S.cur + 1)); S.fol.skip(); }
   $('skip').addEventListener('click', skip);
   document.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight' && S.listening && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); skip(); } });
   $('hear').addEventListener('click', function () { if (S.demo) { stopDemo(); prompt(S.cur); } else startDemo(); });
@@ -1597,6 +1646,112 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
   $('again').addEventListener('click', function () { closeReport(); setCursor(S.range[0]); start(true); });
   $('whole').addEventListener('click', function () { closeReport(); $('from').value = S.barOffset; $('to').value = S.nBars - 1 + S.barOffset; applyBars(); setCursor(S.range[0]); start(true); });
   $('other').addEventListener('click', function () { $('back').click(); });
+
+  /* ---------- report or request ----------
+     Opens a ready-written email. The page itself sends nothing: no server, no recording. */
+  var TO = ['darian.zigante', 'gmail.com'].join('@');
+  var ASH = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], AFL = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  // Plain-text note names, so they survive any email program.
+  function nmA(m) { var t = S.piece && S.piece.key < 0 ? AFL : ASH; return t[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+  // A short running record of the current run: "12.4 ok 23" = step 23 completed 12.4 s in.
+  function note(what) { S.log.push(((Date.now() - S.startedAt) / 1000).toFixed(1) + ' ' + what); if (S.log.length > 40) S.log.shift(); }
+  var ask = { kind: 'problem', info: [], where: '', opener: null, used: false };
+  function details() {
+    var L = ['Version: ' + $('version').textContent.replace(/^Version\s*/, '')];
+    ask.where = '';
+    if (!S.piece || $('practice').hidden) L.push('Screen: list of pieces');
+    else {
+      var p = S.piece, st = S.steps[S.cur], hands = S.hands === 'both' ? 'both hands' : S.hands + ' hand only';
+      L.push('Piece: ' + p.title + (p.imported ? ' (imported file)' : ''));
+      L.push('Settings: bars ' + $('from').value + ' to ' + $('to').value + ', ' + hands + ', speed ' + $('speed').value + '%, zoom ' + S.zoom.toFixed(1));
+      if (st) {
+        var want = []; st.notes.forEach(function (n) { if (!n.tied && inHands(n)) want.push(n.midi); });
+        want.sort(function (a, b) { return a - b; });
+        ask.where = ', bar ' + (st.m + S.barOffset);
+        L.push('At: bar ' + (st.m + S.barOffset) + ', step ' + (S.cur + 1) + ' of ' + S.steps.length + ', music has ' + (want.map(nmA).join(' ') || 'nothing for this hand'));
+      }
+      if (S.listening && S.fol) {
+        var got = []; S.fol.expected.forEach(function (m) { if (S.fol.hit.has(m)) got.push(m); });
+        L.push('Listening: yes, ' + ((Date.now() - S.stepAt) / 1000).toFixed(1) + ' s on this step, accepted so far: ' + (got.map(nmA).join(' ') || 'none') + ', tries ' + (S.fol.tries || 0));
+      } else L.push('Listening: no' + (!$('report').hidden ? ' (run finished: ' + $('repPct').textContent + ', ' + $('repSub').textContent + ')' : ''));
+      if (S.startedAt) L.push('This run: ' + S.mistakes.length + ' wrong, ' + S.skips + ' skipped');
+      if (S.heard) L.push('Last heard: ' + S.heard.notes.map(nmA).join(' ') + ' (' + ((Date.now() - S.heard.at) / 1000).toFixed(1) + ' s before)');
+      if (S.log.length) L.push('Recent: ' + S.log.slice(-12).join(' | '));
+    }
+    if (S.audio) {
+      var tr = S.audio.stream.getAudioTracks()[0];
+      L.push('Microphone: ' + (tr && tr.label ? tr.label + ', ' : '') + S.audio.ctx.sampleRate + ' Hz' + (S.ear && isFinite(S.ear.refMax) ? ', peak ' + Math.round(S.ear.refMax) + ' dB' : ''));
+    }
+    L.push('Window: ' + window.innerWidth + ' x ' + window.innerHeight);
+    L.push('Browser: ' + navigator.userAgent);
+    return L;
+  }
+  function askNote() {
+    var text = $('askText').value.trim(), problem = ask.kind === 'problem';
+    var subject = '[Piano Coach] ' + (problem ? 'Problem' : 'Request') + (S.piece && !$('practice').hidden ? ': ' + S.piece.title + ask.where : '');
+    var lines = [text, '', '---', 'Sent from Piano Coach (' + (problem ? 'problem' : 'request') + ')'].concat(ask.info);
+    function url(ls) { return 'mailto:' + TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(ls.join('\r\n')); }
+    var u = url(lines);
+    // Some email programs refuse very long links: drop the running record first.
+    if (u.length > 6000) u = url(lines.filter(function (l) { return l.indexOf('Recent: ') !== 0; }));
+    return { subject: subject, body: lines.join('\n'), url: u, empty: !text };
+  }
+  function askKind(k) {
+    ask.kind = k;
+    var bs = document.querySelectorAll('[data-kind]');
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-kind') === k ? 'true' : 'false');
+    $('askPrompt').textContent = k === 'problem' ? 'What happened?' : 'What would you like added or changed?';
+    $('askText').placeholder = k === 'problem' ? 'For example: in bar 5 it kept waiting even though I played the right notes.' : 'For example: please add Clair de Lune, or make the note names bigger.';
+  }
+  function askHelp(text, cls) { var el = $('askHelp'); el.textContent = text; el.className = 'note-small' + (cls ? ' ' + cls : ''); }
+  function openAsk(opener) {
+    ask.info = details();                    // taken first, so it shows what was happening
+    if (S.listening) { stopListening(); say('Stopped. <small>Start listening picks up where the cursor is. From the top goes back to the first bar.</small>'); }
+    stopDemo(); clearTimeout(sayTimer);
+    if (ask.used) { $('askText').value = ''; ask.used = false; ask.kind = 'problem'; }   // a fresh note
+    ask.opener = opener || null;
+    $('askInfo').textContent = ask.info.join('\n');
+    $('askCancel').textContent = 'Cancel';
+    askKind(ask.kind);
+    askHelp('Open email starts a new email with your note already written. Press Send there. Notes go to ' + TO + '.');
+    $('ask').hidden = false; $('askText').focus();
+  }
+  function closeAsk() { $('ask').hidden = true; if (ask.opener) { try { ask.opener.focus(); } catch (e) { /* gone */ } } }
+  function askReady() {
+    var n = askNote();
+    if (n.empty) { askHelp('Please write a few words first.', 'bad'); $('askText').focus(); return null; }
+    return n;
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (ok, fail) {
+      var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      var done = false; try { done = document.execCommand('copy'); } catch (e) { done = false; }
+      document.body.removeChild(t); if (done) ok(); else fail(new Error('copy refused'));
+    });
+  }
+  ['askLib', 'askBtn', 'askRep'].forEach(function (id) { $(id).addEventListener('click', function () { openAsk(this); }); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-kind]'), function (b) { b.addEventListener('click', function () { askKind(b.getAttribute('data-kind')); $('askText').focus(); }); });
+  $('askForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var n = askReady(); if (!n) return;
+    ask.used = true; $('askCancel').textContent = 'Close';
+    window.location.href = n.url;
+    askHelp('Your email should now be open with the note written. Press Send there. If nothing opened, press "Copy the note instead" and paste it into a new email to ' + TO + '.', 'good');
+  });
+  $('askCopy').addEventListener('click', function () {
+    var n = askReady(); if (!n) return;
+    copyText('To: ' + TO + '\nSubject: ' + n.subject + '\n\n' + n.body).then(function () {
+      ask.used = true; $('askCancel').textContent = 'Close';
+      askHelp('Copied. Start a new email to ' + TO + ', paste, and send.', 'good');
+    }, function () { askHelp('Copying did not work here. Please write to ' + TO + ' instead.', 'bad'); });
+  });
+  $('askCancel').addEventListener('click', closeAsk);
+  $('askText').addEventListener('input', function () { if (/\bbad\b/.test($('askHelp').className)) askHelp('Open email starts a new email with your note already written. Press Send there. Notes go to ' + TO + '.'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('ask').hidden) closeAsk(); });
+  S.ask = { note: askNote, details: details, open: openAsk };   // for inspection
+
   var rs = null;
   window.addEventListener('resize', function () {
     clearTimeout(rs); rs = setTimeout(function () { if (!S.osmd || $('practice').hidden || S.listening || S.demo) return; var at = S.cur; render(); applyBars(); setCursor(at); showWanted(at); }, 250);

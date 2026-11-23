@@ -4,6 +4,8 @@ A practice page for the piano. It shows sheet music, listens through the compute
 
 **Open it:** https://darianzigante.github.io/piano-coach/ (use Chrome, and allow the microphone when asked)
 
+**Report or request:** the button of that name opens a ready-written email with the note and a few details (piece, bar, what the listener heard, version). The page itself sends nothing.
+
 ## How it is put together
 
 Everything runs in the browser. Nothing is recorded or sent anywhere.

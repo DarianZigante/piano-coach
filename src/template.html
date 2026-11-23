@@ -27,7 +27,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--desk); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--cue); outline-offset: 2px; }
 h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
@@ -109,7 +109,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
 .hear { stroke: #f2c94c; stroke-width: 3; }
 
 /* ---------- report ---------- */
-#report { position: fixed; inset: 0; background: rgba(22, 32, 42, .45); display: grid; place-items: center; padding: 20px; z-index: 20; }
+#report, #ask { position: fixed; inset: 0; background: rgba(22, 32, 42, .45); display: grid; place-items: center; padding: 20px; z-index: 20; }
 .sheet { background: var(--paper); border-radius: 12px; max-width: 620px; width: 100%; max-height: 92%; overflow: auto; padding: 26px 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 40px rgba(22, 32, 42, .3); }
 .sheet h2 { font-size: 30px; }
 .score-line { display: flex; align-items: baseline; gap: 12px; }
@@ -122,6 +122,21 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
 .spots li div b { display: block; }
 .sheet .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .note-small { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+
+/* ---------- report or request ---------- */
+.ask-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; border-top: 1px solid var(--line); padding-top: 20px; }
+.ask-strip p { margin: 0; flex: 1; min-width: 240px; font-size: 15px; }
+.ask-strip p b { display: block; font-family: var(--display); font-size: 19px; font-weight: 600; }
+#ask { z-index: 30; }
+#ask .sheet { gap: 14px; }
+#ask label { font-weight: 600; margin-bottom: -6px; }
+#ask textarea { width: 100%; min-height: 124px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; line-height: 1.4; background: var(--paper); }
+#ask details { font-size: 13.5px; color: var(--ink-2); }
+#ask summary { cursor: pointer; }
+#ask pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; background: var(--desk); border-radius: 6px; padding: 8px 10px; margin: 8px 0 4px; max-height: 170px; overflow: auto; color: var(--ink); }
+#askHelp { font-size: 14.5px; }
+#askHelp.good { color: var(--good); }
+#askHelp.bad { color: var(--bad); }
 
 @media (max-width: 760px) {
   .lib-head { grid-template-columns: 1fr; }
@@ -151,6 +166,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       </div>
     </div>
     <div id="groups"></div>
+    <div class="ask-strip">
+      <p><b>Something not working, or something you would like added?</b>Send a short note about it, such as a piece to add or a bar where the coach got it wrong.</p>
+      <button class="btn" id="askLib" type="button">Report or request</button>
+    </div>
     <p class="fine">Good to know: when two notes are struck at the same moment exactly an octave apart, a microphone cannot always tell whether the upper one was played, so the coach assumes it was. Wrong notes are still caught. Works best in Chrome.</p>
     <p class="fine" id="version">Version <!--BUILD--></p>
   </div>
@@ -176,6 +195,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       <button type="button" id="zoomOut" aria-label="Smaller music">A&minus;</button>
       <button type="button" id="zoomIn" aria-label="Larger music">A+</button>
     </div>
+    <button class="btn quiet" id="askBtn" type="button" title="Report a problem or ask for a change">Report or request</button>
   </div>
   <div id="scoreWrap"><div id="paper"><div id="loading">Setting out the music…</div><div id="score"></div></div></div>
   <div class="coach">
@@ -196,8 +216,32 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap
       <button class="btn primary" id="again" type="button">Play it again</button>
       <button class="btn" id="whole" type="button">Whole piece</button>
       <button class="btn" id="other" type="button">Choose another piece</button>
+      <button class="btn quiet" id="askRep" type="button" title="Report a problem or ask for a change">Report or request</button>
     </div>
   </div>
+</div>
+
+<div id="ask" hidden>
+  <form class="sheet" id="askForm" role="dialog" aria-modal="true" aria-labelledby="askTitle" novalidate>
+    <h2 id="askTitle">Report or request</h2>
+    <div class="seg" role="group" aria-label="What kind of note this is" style="align-self:flex-start">
+      <button type="button" data-kind="problem" aria-pressed="true">Something went wrong</button>
+      <button type="button" data-kind="request" aria-pressed="false">I would like something</button>
+    </div>
+    <label for="askText" id="askPrompt">What happened?</label>
+    <textarea id="askText" rows="5" maxlength="2000"></textarea>
+    <details>
+      <summary>What is sent along with your note</summary>
+      <pre id="askInfo"></pre>
+      These details help find the cause. No sound is recorded or sent.
+    </details>
+    <div class="row">
+      <button class="btn primary" id="askSend" type="submit">Open email</button>
+      <button class="btn" id="askCopy" type="button">Copy the note instead</button>
+      <button class="btn quiet" id="askCancel" type="button">Cancel</button>
+    </div>
+    <p class="note-small" id="askHelp" aria-live="polite"></p>
+  </form>
 </div>
 
 <input type="file" id="file" accept=".musicxml,.xml,.mxl" hidden>
